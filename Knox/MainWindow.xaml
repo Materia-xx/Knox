@@ -5,8 +5,17 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Knox"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-        
+        Title="Knox" Height="500" Width="400" Loaded="Window_Loaded">
+    <Grid x:Name="gridMain">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="25" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBox x:Name="txtSearch" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3" TextChanged="txtSearch_TextChanged" />
+        <TreeView x:Name="treeSecrets" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Column="0" Grid.Row="1" MouseRightButtonDown="TreeSecrets_MouseRightButtonDown" />
     </Grid>
 </Window>
