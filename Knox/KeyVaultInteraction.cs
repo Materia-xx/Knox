@@ -17,14 +17,14 @@ namespace Knox
     //    Microsoft Graph - User.Read
     // Also the App should be set up with a client redirect URI of https://login.microsoftonline.com/common/oauth2/nativeclient
 
-    public class KeyVaultCredential : TokenCredential // I didn't see any TokenCredential in Azure.Identity that got tokens silently/auto like this, so here is a custom one that does it.
+    public class KeyVaultTokenCredential : TokenCredential // I didn't see any TokenCredential in Azure.Identity that got tokens silently/auto like this, so here is a custom one that does it.
     {
         private string ClientId { get; set; }
         private string TenantId { get; set; }
 
         private static Uri OobUri = new Uri("urn:ietf:wg:oauth:2.0:oob");
 
-        public KeyVaultCredential(string clientId, string tenantId)
+        public KeyVaultTokenCredential(string clientId, string tenantId)
         {
             this.ClientId = clientId;
             this.TenantId = tenantId;
@@ -64,7 +64,7 @@ namespace Knox
                 var access_token = authContext.AcquireTokenAsync("https://management.azure.com/", KnoxSettings.Current.ClientId, AppRedirectUri, new PlatformParameters(PromptBehavior.Auto)).Result.AccessToken;
 
                 var credGetters = new List<TokenCredential>();
-                credGetters.Add(new KeyVaultCredential(KnoxSettings.Current.ClientId, KnoxSettings.Current.TenantId));
+                credGetters.Add(new KeyVaultTokenCredential(KnoxSettings.Current.ClientId, KnoxSettings.Current.TenantId));
                 var browserCredentialOptions = new InteractiveBrowserCredentialOptions()
                 {
                     ClientId = KnoxSettings.Current.ClientId,

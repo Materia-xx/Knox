@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -8,11 +9,10 @@ namespace Knox
 {
     // TODO: make a menu item to show the settings editor, so the user can change the settings
 
-    // TODO: make the UI remember which folder names are expanded so when it redraws the UI the same ones are opened.
-
     public partial class MainWindow : Window
     {
         private static char[] folderSplitChars = new char[] { '\\', '/' };
+        private static Dictionary<string, bool> folderExpandedStates = new Dictionary<string, bool>();
 
         private TreeViewTagMetadataSecret moveFromMetadataSecret;
         private ContextMenu vaultContentMenu;
@@ -140,6 +140,61 @@ namespace Knox
             settingsEditor.ShowDialog();
         }
 
+        private void RecordOrRestoreTreeExpandedStates(TreeViewItem treeItem, string prefixPath, bool restore)
+        {
+            if (treeItem == null)
+            {
+                foreach (var topLevelNode in treeSecrets.Items)
+                {
+                    var tvi = topLevelNode as TreeViewItem;
+                    var metaData = GetTreeViewItemTagMetadata<TreeViewTagMetadataVault>(tvi);
+                    var key = metaData.VaultName;
+                    if (restore)
+                    {
+                        if (folderExpandedStates.ContainsKey(key))
+                        {
+                            tvi.IsExpanded = folderExpandedStates[key];
+                        }
+                    }
+                    else
+                    {
+                        folderExpandedStates[key] = tvi.IsExpanded;
+                    }
+                    RecordOrRestoreTreeExpandedStates(tvi, metaData.VaultName, restore);
+                }
+            }
+            else if(treeItem.Items != null)
+            {
+                foreach (var subNode in treeItem.Items)
+                {
+                    var tvi = subNode as TreeViewItem;
+                    var metaDataBase = GetTreeViewItemTagMetadata<TreeViewTagMetadataBase>(tvi);
+                    switch (metaDataBase.TagType)
+                    {
+                        case TreeViewTagMetadataTagType.VirtualFolder:
+                            var metaDataVirtualFolder = GetTreeViewItemTagMetadata<TreeViewTagMetadataVirtualFolder>(tvi);
+                            var key = $"{prefixPath}/{metaDataVirtualFolder.FolderName}";
+                            if (restore)
+                            {
+                                if (folderExpandedStates.ContainsKey(key))
+                                {
+                                    tvi.IsExpanded = folderExpandedStates[key];
+                                }
+                            }
+                            else
+                            {
+                                folderExpandedStates[key] = tvi.IsExpanded;
+                            }
+                            RecordOrRestoreTreeExpandedStates(tvi, metaDataVirtualFolder.FolderName, restore);
+                            break;
+                        default:
+                            // Secrets don't have sub items, so there is no expansion to remember
+                            break;
+                    }
+                }
+            }
+        }
+
         private void LoadSearchResultsUI()
         {
             TreeViewItem findFolderNode(ItemCollection items, string header)
@@ -158,6 +213,8 @@ namespace Knox
                 return null;
             }
 
+            // Before removing all the items, remember which folders were expanded
+            RecordOrRestoreTreeExpandedStates(null, null, false);
             treeSecrets.Items.Clear();
             var searchTerm = txtSearch.Text;
 
@@ -247,6 +304,9 @@ namespace Knox
                     vaultTreeNode.ExpandSubtree();
                 }
             }
+
+            // Restore expanded folders
+            RecordOrRestoreTreeExpandedStates(null, null, true);
 
             // Make sure the cursor is in the search box
             txtSearch.Focus();
