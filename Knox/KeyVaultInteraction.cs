@@ -91,7 +91,16 @@ namespace Knox
                         var vaultUri = new Uri($"https://{vaultName}.vault.azure.net/");
                         if (!VaultClients.ContainsKey(vaultName))
                         {
-                            VaultClients.Add(vaultName, new KnoxVaultClient(vaultUri, credGetter));
+                            // It'll throw if the user can't access the vault, if so then we don't add it
+                            try
+                            {
+                                var vaultClient = new KnoxVaultClient(vaultUri, credGetter);
+                                VaultClients.Add(vaultName, vaultClient);
+                            }
+                            catch (Exception ex)
+                            {
+                                // Ignore
+                            }
                         }
                     }
                 }
