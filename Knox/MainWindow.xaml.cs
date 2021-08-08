@@ -6,7 +6,7 @@ using System.Windows.Media;
 
 namespace Knox
 {
-    // TODO: make it so the program can auto-discover all keyvaults in the specified subscription, even better if it can auto-discover all subscriptions you have access to and we can do away with the config file
+    // TODO: make a menu item to show the settings editor, so the user can change the settings
 
     // TODO: make the UI remember which folder names are expanded so when it redraws the UI the same ones are opened.
 
@@ -124,8 +124,20 @@ namespace Knox
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            // If the clientid/tenant id is not set then give a chance to set it before loading the clients
+            if (string.IsNullOrWhiteSpace(KnoxSettings.Current.ClientId) || string.IsNullOrWhiteSpace(KnoxSettings.Current.TenantId))
+            {
+                ShowSettingsEditor();
+            }
+
             KeyVaultInteraction.InitClients();
             LoadSearchResultsUI();
+        }
+
+        private void ShowSettingsEditor()
+        {
+            var settingsEditor = new SettingsEditor();
+            settingsEditor.ShowDialog();
         }
 
         private void LoadSearchResultsUI()
@@ -179,9 +191,16 @@ namespace Knox
                     if (matchesSearch)
                     {
                         vaultHasMatchingSecrets = true;
+
+                        var secretDisplayName = secretName;
+                        if (secretProperties.Tags.ContainsKey("DisplayName"))
+                        {
+                            secretDisplayName = secretProperties.Tags["DisplayName"];
+                        }
+
                         var vaultSecretNode = new TreeViewItem()
                         {
-                            Header = secretName, // TODO: show DisplayName here, but make sure not to mess up the name we pass to the editor, which needs to be the real name
+                            Header = secretDisplayName,
                             Tag = JsonConvert.SerializeObject(new TreeViewTagMetadataSecret(vaultClientName, secretName))
                         };
 

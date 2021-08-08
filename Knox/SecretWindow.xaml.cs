@@ -136,7 +136,7 @@ namespace Knox
             folderTag.Value = getTextBoxValueWithDefault(txtFolder, "/");
             // Keep the folder tag in the collection even if it represents the root. See notes in UpdateSecret about why.
 
-            // TODO: add the displayname tag too
+            // TODO: add DisplayName to the list of tags to save too. It will be that if the name is not the same as the actual secret name then the DisplayName tag should be added with the altered name.
 
             // Do the update
             var vaultClient = KeyVaultInteraction.VaultClients[this.VaultClientName];

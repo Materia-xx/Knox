@@ -1,0 +1,31 @@
+﻿<Window x:Class="Knox.SettingsEditor"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Knox"
+        mc:Ignorable="d"
+        Title="SettingsEditor" Height="350" Width="400">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="100" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="25" />
+            <RowDefinition Height="25" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="25" />
+
+        </Grid.RowDefinitions>
+
+        <Label Content="Client Id" Grid.Row="0" Grid.Column="0"/>
+        <TextBox x:Name="txtClientId" Grid.Row="0" Grid.Column="1"/>
+
+        <Label Content="Tenant Id" Grid.Row="1" Grid.Column="0"/>
+        <TextBox x:Name="txtTenantId" Grid.Row="1" Grid.Column="1"/>
+
+        <Button Content="Save" Grid.Row="3" Grid.Column="1" Click="btnSave_Click"/>
+
+    </Grid>
+</Window>
