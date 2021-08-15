@@ -3,11 +3,18 @@ using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace Knox
 {
     // TODO: make a menu item to show the settings editor, so the user can change the settings
+
+    // TODO: close program after 5 minutes of inactivity.. configure in settings
+
+    // TODO: add option in settings editor to not show copy version details warning
+
+    // TODO: trim client/tenant id after they are pasted in and verify they are guid?
 
     public partial class MainWindow : Window
     {
@@ -195,6 +202,25 @@ namespace Knox
             }
         }
 
+        private void ExpandAllShownFolders(TreeViewItem treeItem)
+        {
+            if (treeItem == null)
+            {
+                foreach (var topLevelNode in treeSecrets.Items)
+                {
+                    ExpandAllShownFolders(topLevelNode as TreeViewItem);
+                }
+            }
+            else if (treeItem.Items != null && treeItem.Items.Count > 0)
+            {
+                treeItem.IsExpanded = true;
+                foreach (var subNode in treeItem.Items)
+                {
+                    ExpandAllShownFolders(subNode as TreeViewItem);
+                }
+            }
+        }
+
         private void LoadSearchResultsUI()
         {
             TreeViewItem findFolderNode(ItemCollection items, string header)
@@ -213,8 +239,6 @@ namespace Knox
                 return null;
             }
 
-            // Before removing all the items, remember which folders were expanded
-            RecordOrRestoreTreeExpandedStates(null, null, false);
             treeSecrets.Items.Clear();
             var searchTerm = txtSearch.Text;
 
@@ -287,7 +311,6 @@ namespace Knox
                                         Header = folderName,
                                         Tag = JsonConvert.SerializeObject(new TreeViewTagMetadataVirtualFolder(vaultClientName, folderName))
                                     };
-                                    subFolderNode.ExpandSubtree();
                                     secretParentItemCollection.Add(subFolderNode);
                                 }
                                 secretParentItemCollection = subFolderNode.Items;
@@ -305,9 +328,6 @@ namespace Knox
                 }
             }
 
-            // Restore expanded folders
-            RecordOrRestoreTreeExpandedStates(null, null, true);
-
             // Make sure the cursor is in the search box
             txtSearch.Focus();
         }
@@ -315,6 +335,27 @@ namespace Knox
         private void txtSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
             LoadSearchResultsUI();
+
+            // If the search is for nothing, then restore the "non-search" view of which folders are expanded
+            if (string.IsNullOrWhiteSpace(txtSearch.Text))
+            {
+                RecordOrRestoreTreeExpandedStates(null, null, true);
+            }
+
+            // Otherwise, this is a search, so expand everything that was found
+            else
+            {
+                ExpandAllShownFolders(null);
+            }
+        }
+
+        private void txtSearch_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            // Record the expanded state of the tree as it was before any search started
+            if (string.IsNullOrWhiteSpace(txtSearch.Text))
+            {
+                RecordOrRestoreTreeExpandedStates(null, null, false);
+            }
         }
 
         /// <summary>

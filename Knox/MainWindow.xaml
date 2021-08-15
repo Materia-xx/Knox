@@ -15,7 +15,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBox x:Name="txtSearch" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3" TextChanged="txtSearch_TextChanged" />
-        <TreeView x:Name="treeSecrets" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Column="0" Grid.Row="1" MouseRightButtonDown="TreeSecrets_MouseRightButtonDown" />
+        <TextBox x:Name="txtSearch" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3" PreviewKeyDown="txtSearch_PreviewKeyDown" TextChanged="txtSearch_TextChanged" AcceptsTab="False" />
+        <TreeView x:Name="treeSecrets" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Column="0" Grid.Row="1" MouseRightButtonDown="TreeSecrets_MouseRightButtonDown" IsTabStop="false" />
     </Grid>
 </Window>

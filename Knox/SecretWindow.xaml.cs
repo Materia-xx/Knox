@@ -19,22 +19,17 @@ namespace Knox
         // Keeps track of what the secret is, so if it's changed we know to update it
         private string savedPassword = string.Empty;
 
+        private string mode = string.Empty;
+
         public SecretWindow(string vaultClientName)
         {
-            this.VaultClientName = vaultClientName;
-
             InitializeComponent();
-            InitGridSecretTagsGrid();
 
-            var btnCreate = new Button()
-            {
-                Content = "Create"
-            };
-            btnCreate.Click += BtnCreate_Click;
-            Grid.SetColumn(btnCreate, 1);
-            Grid.SetColumnSpan(btnCreate, 3);
-            Grid.SetRow(btnCreate, 4);
-            gridSecret.Children.Add(btnCreate);
+            this.VaultClientName = vaultClientName;
+            this.mode = "Create";
+            btnAction.Content = this.mode;
+            SetPasswordShowMode(false);
+            InitGridSecretTagsGrid();
 
             // tags cannot be updated during a create
             lblFolder.Visibility = Visibility.Hidden;
@@ -46,34 +41,65 @@ namespace Knox
 
         public SecretWindow(string vaultClientName, string secretName)
         {
+            InitializeComponent();
+
             this.VaultClientName = vaultClientName;
             this.SecretName = secretName;
-
-            InitializeComponent();
+            this.mode = "Update";
+            btnAction.Content = this.mode;
+            SetPasswordShowMode(false);
             InitGridSecretTagsGrid();
-
-            var btnUpdate = new Button()
-            {
-                Content = "Update"
-            };
-            btnUpdate.Click += BtnUpdate_Click;
-            Grid.SetColumn(btnUpdate, 1);
-            Grid.SetColumnSpan(btnUpdate, 3);
-            Grid.SetRow(btnUpdate, 4);
-            gridSecret.Children.Add(btnUpdate);
 
             LoadSecret();
             txtName.Focus();
         }
 
-        private void BtnCreate_Click(object sender, RoutedEventArgs e)
+        private void btnAction_Click(object sender, RoutedEventArgs e)
         {
-            CreateNewSecret();
+            switch (this.mode)
+            {
+                case "Create":
+                    CreateNewSecret();
+                    break;
+                case "Update":
+                    UpdateSecret();
+                    break;
+                default:
+                    break;
+            }
         }
 
-        private void BtnUpdate_Click(object sender, RoutedEventArgs e)
+        private void btnShowHidePassword_Click(object sender, RoutedEventArgs e)
         {
-            UpdateSecret();
+            if (btnShowHidePassword.Content.ToString() == "Show")
+            {
+                SetPasswordShowMode(true);
+                btnShowHidePassword.Content = "Hide";
+            }
+            else
+            {
+                SetPasswordShowMode(false);
+                btnShowHidePassword.Content = "Show";
+            }
+        }
+
+        private void btnCopyPassword_Click(object sender, RoutedEventArgs e)
+        {
+            Clipboard.SetText(txtPasswordReal.Text);
+        }
+
+        private void SetPasswordShowMode(bool show)
+        {
+            if (show)
+            {
+                txtPasswordReal.Visibility = Visibility.Visible;
+                txtPasswordStars.Visibility = Visibility.Hidden;
+            }
+            else
+            {
+                txtPasswordReal.Visibility = Visibility.Hidden;
+                txtPasswordStars.Visibility = Visibility.Visible;
+            }
         }
 
         private void CreateNewSecret()
@@ -82,7 +108,7 @@ namespace Knox
             try
             {
                 // Note that tags can't be set when creating a secret by the underlying client
-                vaultClient.CreateSecret(txtName.Text, txtPassword.Text);
+                vaultClient.CreateSecret(txtName.Text, txtPasswordReal.Text);
 
                 // The form will have to be re-opened in edit mode to do editing.
                 this.Close();
@@ -118,7 +144,7 @@ namespace Knox
             }
 
             // Validate password
-            var newPassword = txtPassword.Text;
+            var newPassword = txtPasswordReal.Text;
             if (string.IsNullOrEmpty(newPassword))
             {
                 // Password values cannot be an empty string
@@ -179,8 +205,8 @@ namespace Knox
                 txtName.Text = secret.Name;
             }
 
-            // Show the password
-            txtPassword.Text = secret.Value;
+            txtPasswordReal.Text = secret.Value;
+            txtPasswordStars.Text = new string('*', secret.Value.Length);
             savedPassword = secret.Value;
         }
 
