@@ -5,13 +5,15 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Knox"
         mc:Ignorable="d"
-        Title="SettingsEditor" Height="350" Width="400">
+        Title="Knox Settings" Height="350" Width="400">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="100" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
+            <RowDefinition Height="25" />
+            <RowDefinition Height="25" />
             <RowDefinition Height="25" />
             <RowDefinition Height="25" />
             <RowDefinition Height="*" />
@@ -25,7 +27,13 @@
         <Label Content="Tenant Id" Grid.Row="1" Grid.Column="0"/>
         <TextBox x:Name="txtTenantId" Grid.Row="1" Grid.Column="1"/>
 
-        <Button Content="Save" Grid.Row="3" Grid.Column="1" Click="btnSave_Click"/>
+        <Label Content="Suppress warnings" Grid.Row="2" Grid.Column="1"/>
+        <CheckBox x:Name="chkSuppressWarnings" Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+        <TextBox x:Name="txtIdleMinutesClose" Grid.Row="3" Grid.Column="0"/>
+        <Label Content="Auto-Close after n minutes idle" Grid.Row="3" Grid.Column="1"/>
+
+        <Button Content="Save" Grid.Row="5" Grid.Column="1" Click="btnSave_Click"/>
 
     </Grid>
 </Window>

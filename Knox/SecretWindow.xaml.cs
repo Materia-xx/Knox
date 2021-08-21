@@ -28,7 +28,14 @@ namespace Knox
             this.VaultClientName = vaultClientName;
             this.mode = "Create";
             btnAction.Content = this.mode;
-            SetPasswordShowMode(false);
+            SetPasswordShowMode(true); // In create mode we do initially show what the user is typing to them
+
+            // take away the ability to show/hide/copy when adding.
+            // We don't have a fancy box that actually shows stars and lets you type at the same time. Maybe eventually.
+            btnShowHidePassword.Visibility = Visibility.Hidden;
+            btnCopyPassword.Visibility = Visibility.Hidden;
+            Grid.SetColumnSpan(txtPasswordReal, 5);
+
             InitGridSecretTagsGrid();
 
             // tags cannot be updated during a create
@@ -121,7 +128,7 @@ namespace Knox
 
         private void UpdateSecret()
         {
-            SecretTag getTagWithName(List<SecretTag> sourceTags, string tagName)
+            SecretTag getOrCreateTagWithName(List<SecretTag> sourceTags, string tagName)
             {
                 var foundTag = sourceTags.FirstOrDefault(t => t.Name.Equals(tagName));
                 if (foundTag == null)
@@ -131,6 +138,15 @@ namespace Knox
                     sourceTags.Add(foundTag);
                 }
                 return foundTag;
+            }
+
+            void removeTagWithName(List<SecretTag> sourceTags, string tagName)
+            {
+                var tagsToRemove = sourceTags.Where(tag => tag.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase));
+                foreach (var tag in tagsToRemove)
+                {
+                    sourceTags.Remove(tag);
+                }
             }
 
             string getTextBoxValueWithDefault(TextBox box, string defaultValue)
@@ -158,11 +174,19 @@ namespace Knox
             // Figure out the list of tags
             var tags = ((ObservableCollection<SecretTag>)gridTags.ItemsSource).ToList();
             // Make sure we have the folder tag added with the right value
-            var folderTag = getTagWithName(tags, "Folder");
+            var folderTag = getOrCreateTagWithName(tags, "Folder");
             folderTag.Value = getTextBoxValueWithDefault(txtFolder, "/");
             // Keep the folder tag in the collection even if it represents the root. See notes in UpdateSecret about why.
 
-            // TODO: add DisplayName to the list of tags to save too. It will be that if the name is not the same as the actual secret name then the DisplayName tag should be added with the altered name.
+            if (!txtName.Text.Equals(this.SecretName))
+            {
+                var displayNameTag = getOrCreateTagWithName(tags, "DisplayName");
+                displayNameTag.Value = txtName.Text;
+            }
+            else
+            {
+                removeTagWithName(tags, "DisplayName");
+            }
 
             // Do the update
             var vaultClient = KeyVaultInteraction.VaultClients[this.VaultClientName];

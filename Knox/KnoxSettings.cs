@@ -8,6 +8,8 @@ namespace Knox
     {
         public string TenantId { get; set; }
         public string ClientId { get; set; }
+        public bool SuppressWarnings { get; set; }
+        public int IdleMinutesClose { get; set; }
 
         private static string GetSettingsFilePath()
         {
@@ -28,7 +30,10 @@ namespace Knox
             // If the settings file doesn't exist yet, create an empty one
             if (!fileInfo.Exists)
             {
-                var defaultSettings = new KnoxSettings();
+                var defaultSettings = new KnoxSettings()
+                {
+                    IdleMinutesClose = 5
+                };
                 Save(defaultSettings);
             }
         }

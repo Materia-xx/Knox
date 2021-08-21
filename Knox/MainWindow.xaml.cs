@@ -5,21 +5,18 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace Knox
 {
-    // TODO: make a menu item to show the settings editor, so the user can change the settings
-
-    // TODO: close program after 5 minutes of inactivity.. configure in settings
-
-    // TODO: add option in settings editor to not show copy version details warning
-
-    // TODO: trim client/tenant id after they are pasted in and verify they are guid?
-
     public partial class MainWindow : Window
     {
         private static char[] folderSplitChars = new char[] { '\\', '/' };
         private static Dictionary<string, bool> folderExpandedStates = new Dictionary<string, bool>();
+
+        private DateTime lastInteractiveTime = DateTime.Now;
+        private SettingsEditor currentSettingsEditor;
+        private SecretWindow currentSecretWindow;
 
         private TreeViewTagMetadataSecret moveFromMetadataSecret;
         private ContextMenu vaultContentMenu;
@@ -29,10 +26,38 @@ namespace Knox
         public MainWindow()
         {
             InitializeComponent();
-            InitContextMenus();
+            InitVaultContextMenu();
+            InitSecretContextMenu();
+
+            var closeTimer = new DispatcherTimer();
+            closeTimer.Interval = TimeSpan.FromSeconds(5);
+            closeTimer.Tick += CloseTimer_Tick;
+            closeTimer.Start();
         }
 
-        private void InitContextMenus()
+        private void CloseTimer_Tick(object sender, EventArgs e)
+        {
+            if (KnoxSettings.Current.IdleMinutesClose != 0)
+            {
+                var idleMinutesSoFar = (DateTime.Now - lastInteractiveTime).TotalMinutes;
+                if (idleMinutesSoFar >= KnoxSettings.Current.IdleMinutesClose)
+                {
+                    if (this.currentSettingsEditor != null && this.currentSettingsEditor.IsVisible)
+                    {
+                        this.currentSettingsEditor.Close();
+                    }
+
+                    if (this.currentSecretWindow != null && this.currentSecretWindow.IsVisible)
+                    {
+                        this.currentSecretWindow.Close();
+                    }
+
+                    this.Close();
+                }
+            }
+        }
+
+        private void InitVaultContextMenu()
         {
             vaultContentMenu = new ContextMenu();
             var vaultAddSecretMenu = new MenuItem()
@@ -42,27 +67,72 @@ namespace Knox
             vaultAddSecretMenu.Click += VaultAddSecretMenu_Click;
             vaultContentMenu.Items.Add(vaultAddSecretMenu);
 
+            var vaultShowSettingsMenu = new MenuItem()
+            {
+                Header = "Settings"
+            };
+            vaultShowSettingsMenu.Click += (a, e) => { ShowSettingsEditor(); };
+            vaultContentMenu.Items.Add(vaultShowSettingsMenu);
+
             vaultMoveToHereMenu = new MenuItem()
             {
                 Header = "Move to here"
             };
             vaultMoveToHereMenu.Click += VaultMoveToHereMenu_Click;
             vaultContentMenu.Items.Add(vaultMoveToHereMenu);
+        }
 
+        private void InitSecretContextMenu()
+        {
             secretContextMenu = new ContextMenu();
 
             var secretMoveToNewVaultMenu = new MenuItem()
             {
-                Header = "Move to vault..."
+                Header = "Move to different vault"
             };
             secretMoveToNewVaultMenu.Click += SecretMoveToNewVaultMenu_Click;
             secretContextMenu.Items.Add(secretMoveToNewVaultMenu);
+
+            var secretDeleteMmenu = new MenuItem()
+            {
+                Header = "Delete"
+            };
+            secretDeleteMmenu.Click += SecretDeleteMmenu_Click;
+            secretContextMenu.Items.Add(secretDeleteMmenu);
+        }
+
+        private void SecretDeleteMmenu_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedSecret = GetTreeViewItemTagMetadata<TreeViewTagMetadataSecret>(treeSecrets.SelectedItem as TreeViewItem);
+            if (selectedSecret != null)
+            {
+                var vaultClient = KeyVaultInteraction.VaultClients[selectedSecret.VaultName];
+                var secretProperties = vaultClient.AllSecretProperties[selectedSecret.SecretName];
+                var question = $"Delete secret '{selectedSecret.SecretName}'?";
+                if (secretProperties.Tags.ContainsKey("DisplayName"))
+                {
+                    var displayName = secretProperties.Tags["DisplayName"];
+                    if (!selectedSecret.SecretName.Equals(displayName))
+                    {
+                        question += $"\r\nDisplayName = '{displayName}'.";
+                    }
+                }
+
+                var answer = MessageBox.Show(question, "Delete Secret", MessageBoxButton.YesNo);
+                if (answer != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+                vaultClient.DeleteSecret(selectedSecret.SecretName);
+                // Redraw the UI so the deleted secret is removed
+                LoadSearchResultsUI();
+            }
         }
 
         private void SecretMoveToNewVaultMenu_Click(object sender, RoutedEventArgs e)
         {
             moveFromMetadataSecret = GetTreeViewItemTagMetadata<TreeViewTagMetadataSecret>(treeSecrets.SelectedItem as TreeViewItem);
-            if (moveFromMetadataSecret != null)
+            if (moveFromMetadataSecret != null && !KnoxSettings.Current.SuppressWarnings)
             {
                 MessageBox.Show("Warning: Secret history is not copied during a move.\r\nTo complete the move select the vault to move to and choose\r\n 'Move to here'.", "Move Secret");
             }
@@ -78,7 +148,7 @@ namespace Knox
             var moveToMetadataVault = GetTreeViewItemTagMetadata<TreeViewTagMetadataVault>(treeSecrets.SelectedItem as TreeViewItem);
             if (moveToMetadataVault == null)
             {
-                MessageBox.Show("Please select a vault to move to");
+                MessageBox.Show("Please select a vault to move to.");
                 return;
             }
 
@@ -123,8 +193,9 @@ namespace Knox
             var selectedTreeNode = treeSecrets.SelectedItem as TreeViewItem;
             var vaultClientName = selectedTreeNode.Header.ToString();
 
-            var secretWindow = new SecretWindow(vaultClientName);
-            secretWindow.ShowDialog();
+            this.currentSecretWindow = new SecretWindow(vaultClientName);
+            this.currentSecretWindow.ShowDialog();
+            this.currentSecretWindow = null;
             // After the dialog closes, reload the UI again to show the new secret
             LoadSearchResultsUI();
         }
@@ -143,8 +214,8 @@ namespace Knox
 
         private void ShowSettingsEditor()
         {
-            var settingsEditor = new SettingsEditor();
-            settingsEditor.ShowDialog();
+            this.currentSettingsEditor = new SettingsEditor();
+            this.currentSettingsEditor.ShowDialog();
         }
 
         private void RecordOrRestoreTreeExpandedStates(TreeViewItem treeItem, string prefixPath, bool restore)
@@ -287,8 +358,9 @@ namespace Knox
 
                         vaultSecretNode.MouseDoubleClick += (s, e) =>
                         {
-                            var secretWindow = new SecretWindow(vaultClientName, secretName);
-                            secretWindow.ShowDialog();
+                            this.currentSecretWindow = new SecretWindow(vaultClientName, secretName);
+                            this.currentSecretWindow.ShowDialog();
+                            this.currentSecretWindow = null;
                             // After the dialog closes, reload the UI again because the user may have changed the folder or name
                             LoadSearchResultsUI();
                         };
@@ -427,6 +499,11 @@ namespace Knox
                     treeSecrets.ContextMenu = null;
                     break;
             }
+        }
+
+        private void Window_MouseMove(object sender, MouseEventArgs e)
+        {
+            lastInteractiveTime = DateTime.Now;
         }
     }
 }
