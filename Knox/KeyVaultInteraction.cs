@@ -61,7 +61,7 @@ namespace Knox
             try
             {
                 AuthenticationContext authContext = new AuthenticationContext($"https://login.microsoftonline.com/{KnoxSettings.Current.TenantId}");
-                var access_token = authContext.AcquireTokenAsync("https://management.azure.com/", KnoxSettings.Current.ClientId, AppRedirectUri, new PlatformParameters(PromptBehavior.Auto)).Result.AccessToken;
+                var access_token = authContext.AcquireTokenAsync("https://management.azure.com/", KnoxSettings.Current.ClientId, AppRedirectUri, new PlatformParameters(PromptBehavior.SelectAccount)).Result.AccessToken;
 
                 var credGetters = new List<TokenCredential>();
                 credGetters.Add(new KeyVaultTokenCredential(KnoxSettings.Current.ClientId, KnoxSettings.Current.TenantId));
