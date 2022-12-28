@@ -58,11 +58,22 @@ namespace Knox
                 return;
             }
 
+            AuthenticationContext authContext = new AuthenticationContext($"https://login.microsoftonline.com/{KnoxSettings.Current.TenantId}");
+            string access_token;
+
             try
             {
-                AuthenticationContext authContext = new AuthenticationContext($"https://login.microsoftonline.com/{KnoxSettings.Current.TenantId}");
-                var access_token = authContext.AcquireTokenAsync("https://management.azure.com/", KnoxSettings.Current.ClientId, AppRedirectUri, new PlatformParameters(PromptBehavior.Auto)).Result.AccessToken;
+                // First try auto-login
+                access_token = authContext.AcquireTokenAsync("https://management.azure.com/", KnoxSettings.Current.ClientId, AppRedirectUri, new PlatformParameters(PromptBehavior.Auto)).Result.AccessToken;
+            }
+            catch
+            {
+                // If auto-login doesn't work then prompt for which account to use
+                access_token = authContext.AcquireTokenAsync("https://management.azure.com/", KnoxSettings.Current.ClientId, AppRedirectUri, new PlatformParameters(PromptBehavior.SelectAccount)).Result.AccessToken;
+            }
 
+            try
+            {
                 var credGetters = new List<TokenCredential>();
                 credGetters.Add(new KeyVaultTokenCredential(KnoxSettings.Current.ClientId, KnoxSettings.Current.TenantId));
                 var browserCredentialOptions = new InteractiveBrowserCredentialOptions()
