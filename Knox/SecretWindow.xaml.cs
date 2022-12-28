@@ -173,6 +173,12 @@ namespace Knox
 
             // Figure out the list of tags
             var tags = ((ObservableCollection<SecretTag>)gridTags.ItemsSource).ToList();
+            if (tags.Any(t => string.IsNullOrWhiteSpace(t?.Name)))
+            {
+                MessageBox.Show("Please remove any tags with blank names and try again.");
+                return;
+            }
+
             // Make sure we have the folder tag added with the right value
             var folderTag = getOrCreateTagWithName(tags, "Folder");
             folderTag.Value = getTextBoxValueWithDefault(txtFolder, "/");
@@ -190,10 +196,17 @@ namespace Knox
 
             // Do the update
             var vaultClient = KeyVaultInteraction.VaultClients[this.VaultClientName];
-            vaultClient.UpdateSecret(this.SecretName, updatePassword, newPassword, tags);
+            try
+            {
+                vaultClient.UpdateSecret(this.SecretName, updatePassword, newPassword, tags);
 
-            // Assumes all editing is done when the update button is pressed
-            this.Close();
+                // Assumes all editing is done when the update button is pressed (and save is successful)
+                this.Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error (secret not updated): {ex.Message}");
+            }
         }
 
         private void LoadSecret()
