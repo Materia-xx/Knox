@@ -155,23 +155,17 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="KnoxVaultClient.cs" />
-    <Compile Include="Models\KeyVaultsListModel.cs" />
-    <Compile Include="Models\SubscriptionsListModel.cs" />
-    <Compile Include="SecretTag.cs" />
     <Compile Include="SecretWindow.xaml.cs">
       <DependentUpon>SecretWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="SettingsEditor.xaml.cs">
       <DependentUpon>SettingsEditor.xaml</DependentUpon>
     </Compile>
-    <Compile Include="StringExtensions.cs" />
     <Compile Include="TreeViewTagMetadataBase.cs" />
     <Compile Include="TreeViewTagMetadataVirtualFolder.cs" />
     <Compile Include="TreeViewTagMetadataTagType.cs" />
     <Compile Include="TreeViewTagMetadataSecret.cs" />
     <Compile Include="TreeViewTagMetadataVault.cs" />
-    <Compile Include="KnoxSettings.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -223,6 +217,12 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="KeyIcon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Knox.Core\Knox.Core.csproj">
+      <Project>{A1B2C3D4-0000-4000-A000-000000000001}</Project>
+      <Name>Knox.Core</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

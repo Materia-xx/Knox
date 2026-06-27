@@ -1,7 +1,7 @@
-﻿using Android.App;
+using Android.App;
 using Android.Runtime;
 
-namespace Knox.Android;
+namespace Knox.App;
 
 [Application]
 public class MainApplication : MauiApplication

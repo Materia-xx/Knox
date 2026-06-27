@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 
-namespace Knox.Android;
+namespace Knox.App;
 
 public static class MauiProgram
 {

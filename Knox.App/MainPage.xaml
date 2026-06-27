@@ -1,7 +1,7 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="Knox.Android.MainPage">
+             x:Class="Knox.App.MainPage">
 
     <ScrollView>
         <VerticalStackLayout
@@ -15,17 +15,30 @@
                 SemanticProperties.Description="Knox sample app logo" />
 
             <Label
-                Text="Knox for Android"
+                Text="Knox.App (Windows + Android)"
                 Style="{StaticResource Headline}"
                 HorizontalOptions="Center"
                 SemanticProperties.HeadingLevel="Level1" />
 
             <Label
-                Text="Sample app &#8212; if you can read this and the button below works, the toolchain, emulator, and/or your phone are all wired up correctly."
+                Text="Sample app sharing logic from Knox.Core. Tap below to load settings through the shared library and confirm cross-platform code sharing works."
                 Style="{StaticResource SubHeadline}"
                 HorizontalOptions="Center"
                 HorizontalTextAlignment="Center"
                 SemanticProperties.HeadingLevel="Level2" />
+
+            <Button
+                x:Name="CoreBtn"
+                Text="Load settings via Knox.Core"
+                SemanticProperties.Hint="Exercises the shared Knox.Core library"
+                Clicked="OnCheckCoreClicked"
+                HorizontalOptions="Fill" />
+
+            <Label
+                x:Name="CoreStatusLabel"
+                Text=""
+                HorizontalOptions="Center"
+                HorizontalTextAlignment="Center" />
 
             <Button
                 x:Name="CounterBtn"

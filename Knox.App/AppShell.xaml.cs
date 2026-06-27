@@ -1,4 +1,4 @@
-﻿namespace Knox.Android;
+namespace Knox.App;
 
 public partial class AppShell : Shell
 {

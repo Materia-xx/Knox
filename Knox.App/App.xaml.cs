@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Knox.Android;
+namespace Knox.App;
 
 public partial class App : Application
 {
