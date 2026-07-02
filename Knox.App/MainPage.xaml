@@ -40,6 +40,35 @@
                 HorizontalOptions="Center"
                 HorizontalTextAlignment="Center" />
 
+            <Label
+                Text="Auth test \u2014 sign in and list your Key Vaults"
+                Style="{StaticResource SubHeadline}"
+                HorizontalOptions="Center"
+                HorizontalTextAlignment="Center" />
+
+            <Entry
+                x:Name="TenantEntry"
+                Placeholder="Tenant ID (GUID)"
+                Keyboard="Plain" />
+
+            <Entry
+                x:Name="ClientEntry"
+                Placeholder="Client ID (GUID)"
+                Keyboard="Plain" />
+
+            <Button
+                x:Name="SignInBtn"
+                Text="Sign in &amp; list Key Vaults"
+                SemanticProperties.Hint="Signs in with MSAL and lists Key Vaults you can access"
+                Clicked="OnSignInClicked"
+                HorizontalOptions="Fill" />
+
+            <Label
+                x:Name="AuthStatusLabel"
+                Text=""
+                HorizontalOptions="Center"
+                HorizontalTextAlignment="Center" />
+
             <Button
                 x:Name="CounterBtn"
                 Text="Tap to confirm it's working"

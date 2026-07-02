@@ -1,6 +1,55 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true"></application>
+	<!--
+	Android 11+ (API 30+) package visibility filtering. By default an app can no
+	longer see other installed apps/services. MSAL's interactive sign-in prefers
+	a Custom Tabs browser (Chrome/Edge/Samsung Internet/etc.) because that flow
+	reliably returns the auth code to the app. Without the <queries> block below,
+	MSAL's lookup for a Custom-Tabs-capable browser finds nothing, logs
+	"Browser with custom tabs package not available. Launching with alternate
+	browser.", and falls back to a plain full browser whose redirect does NOT
+	deliver the auth code back to MSAL -> sign-in hangs on "Signing in...".
+
+	Declaring the browser VIEW intent + the CustomTabsService intent makes those
+	browsers visible again so MSAL can use Custom Tabs and complete sign-in.
+
+	Refs:
+	  - MSAL system browser (the exact link in the warning): https://aka.ms/msal-net-system-browsers
+	  - Android package visibility filtering: https://developer.android.com/training/package-visibility
+	-->
+	<queries>
+		<intent>
+			<action android:name="android.intent.action.VIEW" />
+			<category android:name="android.intent.category.BROWSABLE" />
+			<data android:scheme="https" />
+		</intent>
+		<intent>
+			<action android:name="android.support.customtabs.action.CustomTabsService" />
+		</intent>
+	</queries>
+	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true">
+		<!--
+		MSAL system-browser redirect handler. Catches the redirect back into the
+		app after interactive sign-in completes in the system browser. The data
+		scheme/host/path is the redirect URI keyed to this app's package name +
+		signing certificate (NOT any client id), so the app stays generic across
+		whatever tenant/client ids the user registers.
+
+		The path below is base64(SHA-1(signing cert)) for the current DEBUG
+		keystore. It is computed at runtime by MsalAndroidRedirect for the value
+		passed to MSAL; this static entry must match it. If the app is re-signed
+		with a different (e.g. release) keystore, update this path to that cert's
+		hash. See Knox.App/Platforms/Android/MsalAndroidRedirect.cs.
+		-->
+		<activity android:name="microsoft.identity.client.BrowserTabActivity" android:exported="true">
+			<intent-filter>
+				<action android:name="android.intent.action.VIEW" />
+				<category android:name="android.intent.category.DEFAULT" />
+				<category android:name="android.intent.category.BROWSABLE" />
+				<data android:scheme="msauth" android:host="com.materia.knox" android:path="/i1RyQCxx81KoXGthqy+pYMvLqjs=" />
+			</intent-filter>
+		</activity>
+	</application>
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.INTERNET" />
 </manifest>

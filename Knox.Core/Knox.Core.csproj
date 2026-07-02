@@ -1,8 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- netstandard2.0 so this library is consumable by BOTH the .NET Framework 4.7.2
-         WPF app (Knox) and modern .NET (Knox.App MAUI for Windows + Android). -->
+    <!-- Targets netstandard2.0 so the SAME shared logic is consumable by BOTH UI apps:
+           - the .NET Framework 4.7.2 WPF app (Knox) can ONLY reference netstandard2.0
+           - the modern .NET MAUI app (Knox.App) consumes netstandard2.0 fine too
+         Kept single-target (not multi-targeted) on purpose: the non-SDK WPF project
+         + a multi-targeted Core thrash the shared obj/project.assets.json during
+         parallel solution builds. MSAL/net10-only code lives in Knox.App instead. -->
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Knox</RootNamespace>
     <AssemblyName>Knox.Core</AssemblyName>

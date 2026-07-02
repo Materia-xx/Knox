@@ -25,7 +25,7 @@
 		<ApplicationTitle>Knox.App</ApplicationTitle>
 
 		<!-- App Identifier -->
-		<ApplicationId>com.knox.sample</ApplicationId>
+		<ApplicationId>com.materia.knox</ApplicationId>
 
 		<!-- Versions -->
 		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
@@ -60,6 +60,7 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Identity.Client" Version="4.85.2" />
 	</ItemGroup>
 
 	<ItemGroup>
