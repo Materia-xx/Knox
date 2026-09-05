@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
 namespace Knox.App.Logic.Models;
 
 /// <summary>
@@ -27,4 +31,45 @@ public sealed class AppConfig
 
     /// <summary>Id of the connection last used, so the app can preselect it.</summary>
     public string? LastConnectionId { get; set; }
+
+    /// <summary>
+    /// Vault names whose metadata loading is disabled, grouped by connection id.
+    /// Missing connections and vaults default to enabled.
+    /// </summary>
+    public Dictionary<string, List<string>> DisabledVaultsByConnection { get; set; } = new();
+
+    public bool IsVaultMetadataEnabled(string connectionId, string vaultName) =>
+        !GetDisabledVaultNames(connectionId).Contains(vaultName, StringComparer.OrdinalIgnoreCase);
+
+    public IReadOnlyList<string> GetDisabledVaultNames(string connectionId)
+    {
+        DisabledVaultsByConnection ??= new Dictionary<string, List<string>>();
+        return DisabledVaultsByConnection.TryGetValue(connectionId, out var vaultNames) &&
+               vaultNames is not null
+            ? vaultNames
+            : Array.Empty<string>();
+    }
+
+    public void SetVaultMetadataEnabled(string connectionId, string vaultName, bool enabled)
+    {
+        DisabledVaultsByConnection ??= new Dictionary<string, List<string>>();
+        if (!DisabledVaultsByConnection.TryGetValue(connectionId, out var disabledVaults) ||
+            disabledVaults is null)
+        {
+            disabledVaults = new List<string>();
+            DisabledVaultsByConnection[connectionId] = disabledVaults;
+        }
+
+        disabledVaults.RemoveAll(
+            name => string.Equals(name, vaultName, StringComparison.OrdinalIgnoreCase));
+        if (!enabled)
+        {
+            disabledVaults.Add(vaultName);
+        }
+
+        if (disabledVaults.Count == 0)
+        {
+            DisabledVaultsByConnection.Remove(connectionId);
+        }
+    }
 }

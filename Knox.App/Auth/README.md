@@ -110,3 +110,16 @@ the code. We request the target scope directly (e.g.
 `https://management.azure.com/.default` for ARM), so no id-token→access-token
 / on-behalf-of conversion is needed here — that's a confidential-client/backend
 concern, not ours.
+
+## Windows token persistence
+
+Windows uses `PersistentInteractiveBrowserTokenCredential` rather than the
+Android MSAL credential. Azure.Identity stores refresh/access tokens in its
+OS-protected persistent cache (`Knox_KeyVault`), while Knox stores a small
+authentication record per connection under
+`%LOCALAPPDATA%\Knox\Authentication`. The record identifies the account to load
+from the encrypted cache; it does not contain access or refresh tokens.
+
+If a connection's client or tenant changes, its old authentication record is not
+reused. Invalid records are removed and the next request signs in interactively.
+Android continues to use the existing MSAL/system-browser flow.

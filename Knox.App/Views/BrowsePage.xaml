@@ -80,10 +80,28 @@
                                 Command="{Binding Source={RelativeSource AncestorType={x:Type vm:BrowseViewModel}}, Path=RowTappedCommand}"
                                 CommandParameter="{Binding .}" />
                         </Grid.GestureRecognizers>
-                        <HorizontalStackLayout Spacing="6" Padding="4,10">
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="6" Padding="4,10">
                             <Label Text="{Binding Glyph}" FontSize="14" WidthRequest="16" />
-                            <Label Text="{Binding Text}" FontSize="15" />
-                        </HorizontalStackLayout>
+                            <Label Grid.Column="1" Text="{Binding Text}" FontSize="15" VerticalOptions="Center" />
+                            <ActivityIndicator
+                                Grid.Column="2"
+                                IsRunning="{Binding IsVaultLoading}"
+                                IsVisible="{Binding IsVaultLoading}"
+                                HeightRequest="18"
+                                WidthRequest="18" />
+                            <Label
+                                Grid.Column="2"
+                                Text="&#x26A0;"
+                                IsVisible="{Binding HasVaultLoadFailed}"
+                                FontSize="14"
+                                TextColor="DarkOrange" />
+                            <Switch
+                                Grid.Column="3"
+                                IsVisible="{Binding IsVault}"
+                                IsToggled="{Binding IsVaultMetadataEnabled}"
+                                VerticalOptions="Center"
+                                SemanticProperties.Description="Load vault metadata" />
+                        </Grid>
                     </Grid>
                 </DataTemplate>
             </CollectionView.ItemTemplate>

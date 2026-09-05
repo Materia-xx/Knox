@@ -1,3 +1,6 @@
+using System;
+using System.Threading.Tasks;
+using Knox.App.Logic.Mvvm;
 using Microsoft.Maui;
 
 namespace Knox.App.ViewModels;
@@ -17,13 +20,23 @@ public enum TreeRowKind
 /// the CommunityToolkit Expander is a third-party package we avoid. Tapping an
 /// expandable row toggles it and re-flattens; tapping a secret opens it.
 /// </summary>
-public sealed class TreeRow
+public sealed class TreeRow : ObservableObject
 {
-    public TreeRow(TreeRowKind kind, int level, string text)
+    private readonly Func<TreeRow, bool, Task>? _metadataToggle;
+    private bool _isVaultMetadataEnabled = true;
+
+    public TreeRow(
+        TreeRowKind kind,
+        int level,
+        string text,
+        bool isVaultMetadataEnabled = true,
+        Func<TreeRow, bool, Task>? metadataToggle = null)
     {
         Kind = kind;
         Level = level;
         Text = text;
+        _isVaultMetadataEnabled = isVaultMetadataEnabled;
+        _metadataToggle = metadataToggle;
     }
 
     public TreeRowKind Kind { get; }
@@ -32,6 +45,21 @@ public sealed class TreeRow
 
     public bool IsExpandable => Kind != TreeRowKind.Secret;
     public bool IsSecret => Kind == TreeRowKind.Secret;
+    public bool IsVaultLoading { get; set; }
+    public bool HasVaultLoadFailed { get; set; }
+    public bool IsVault => Kind == TreeRowKind.Vault;
+
+    public bool IsVaultMetadataEnabled
+    {
+        get => _isVaultMetadataEnabled;
+        set
+        {
+            if (SetProperty(ref _isVaultMetadataEnabled, value) && _metadataToggle is not null)
+            {
+                _ = _metadataToggle(this, value);
+            }
+        }
+    }
 
     /// <summary>Expand/collapse glyph for expandable rows (empty for secrets).</summary>
     public string Glyph { get; set; } = string.Empty;

@@ -18,6 +18,7 @@ public sealed class AppConfigStoreTests
         Assert.AreEqual(120, config.ClipboardClearSeconds);
         Assert.IsTrue(config.RequireBiometricUnlock);
         Assert.IsFalse(config.SuppressWarnings);
+        Assert.IsTrue(config.IsVaultMetadataEnabled("connection", "vault"));
     }
 
     [TestMethod]
@@ -32,6 +33,7 @@ public sealed class AppConfigStoreTests
             RequireBiometricUnlock = false,
             LastConnectionId = "abc",
         };
+        config.SetVaultMetadataEnabled("abc", "vault-one", enabled: false);
 
         await store.SaveAsync(config);
         var loaded = await store.LoadAsync();
@@ -41,6 +43,8 @@ public sealed class AppConfigStoreTests
         Assert.AreEqual(30, loaded.ClipboardClearSeconds);
         Assert.IsFalse(loaded.RequireBiometricUnlock);
         Assert.AreEqual("abc", loaded.LastConnectionId);
+        Assert.IsFalse(loaded.IsVaultMetadataEnabled("abc", "vault-one"));
+        Assert.IsTrue(loaded.IsVaultMetadataEnabled("abc", "vault-two"));
     }
 
     [TestMethod]
@@ -53,5 +57,21 @@ public sealed class AppConfigStoreTests
         var config = await store.LoadAsync();
 
         Assert.AreEqual(5, config.IdleMinutesLock);
+    }
+
+    [TestMethod]
+    public void VaultMetadataSetting_IsConnectionSpecific_AndDefaultsOn()
+    {
+        var config = new AppConfig();
+
+        config.SetVaultMetadataEnabled("connection-a", "shared-vault", enabled: false);
+
+        Assert.IsFalse(config.IsVaultMetadataEnabled("connection-a", "SHARED-VAULT"));
+        Assert.IsTrue(config.IsVaultMetadataEnabled("connection-b", "shared-vault"));
+
+        config.SetVaultMetadataEnabled("connection-a", "shared-vault", enabled: true);
+
+        Assert.IsTrue(config.IsVaultMetadataEnabled("connection-a", "shared-vault"));
+        Assert.AreEqual(0, config.DisabledVaultsByConnection.Count);
     }
 }

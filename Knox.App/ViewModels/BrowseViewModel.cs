@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Knox.App.Logic.Models;
@@ -32,6 +33,8 @@ public sealed class BrowseViewModel : BaseViewModel
     private string _status = string.Empty;
     private bool _hasLoaded;
     private IReadOnlyList<VaultTreeNode> _tree = Array.Empty<VaultTreeNode>();
+    private CancellationTokenSource? _loadCancellation;
+    private int _loadVersion;
 
     public BrowseViewModel(
         VaultCacheService cache,
@@ -158,6 +161,8 @@ public sealed class BrowseViewModel : BaseViewModel
     /// <summary>Drop back to the connection list so the user can switch connections.</summary>
     private Task ChangeConnectionAsync()
     {
+        _loadCancellation?.Cancel();
+        _loadVersion++;
         HasLoaded = false;
         Rows.Clear();
         _tree = Array.Empty<VaultTreeNode>();
@@ -192,12 +197,50 @@ public sealed class BrowseViewModel : BaseViewModel
             return;
         }
 
+        _loadCancellation?.Cancel();
+        _loadCancellation?.Dispose();
+        _loadCancellation = new CancellationTokenSource();
+        var cancellationToken = _loadCancellation.Token;
+        var loadVersion = ++_loadVersion;
+
         IsBusy = true;
         Status = "Signing in and loading vaults\u2026";
+        HasLoaded = false;
+        Rows.Clear();
+        _tree = Array.Empty<VaultTreeNode>();
         try
         {
             _session.Config = await _configStore.LoadAsync();
-            await _cache.RefreshAsync(connection, PlatformAuthParent.Get, RedirectUriProvider.GetForCurrentPlatform());
+            var progress = new Progress<VaultLoadProgress>(update =>
+            {
+                if (loadVersion != _loadVersion)
+                {
+                    return;
+                }
+
+                if (update.VaultName is null)
+                {
+                    HasLoaded = true;
+                    IsBusy = false;
+                }
+
+                RebuildTree();
+                UpdateLoadingStatus(update.CompletedVaults, update.TotalVaults);
+            });
+
+            await _cache.RefreshAsync(
+                connection,
+                PlatformAuthParent.Get,
+                RedirectUriProvider.GetForCurrentPlatform(),
+                _session.Config.GetDisabledVaultNames(connection.Id),
+                progress,
+                cancellationToken);
+
+            if (loadVersion != _loadVersion)
+            {
+                return;
+            }
+
             HasLoaded = true;
             RebuildTree();
             if (_cache.VaultNames.Count == 0)
@@ -215,8 +258,17 @@ public sealed class BrowseViewModel : BaseViewModel
                 Status = $"{_cache.VaultNames.Count} vault(s), {_cache.Secrets.Count} secret(s).";
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // A refresh or connection change superseded this load.
+        }
         catch (Exception ex)
         {
+            if (loadVersion != _loadVersion)
+            {
+                return;
+            }
+
             Knox.AuthLog.Error("Browse.Load", ex);
             Status = $"Load failed: {ex.Message}";
             var shell = Shell.Current;
@@ -227,8 +279,43 @@ public sealed class BrowseViewModel : BaseViewModel
         }
         finally
         {
-            IsBusy = false;
+            if (loadVersion == _loadVersion)
+            {
+                IsBusy = false;
+            }
         }
+    }
+
+    private void UpdateLoadingStatus(int completedVaults, int totalVaults)
+    {
+        if (totalVaults == 0)
+        {
+            Status = "Signed in \u2014 no Key Vaults found for this account.";
+            return;
+        }
+
+        var readyVaults = _cache.LoadedVaultNames.Count;
+        var failedVaults = _cache.FailedVaults.Count;
+        var disabledVaults = _cache.VaultNames.Count(
+            name => _cache.GetVaultLoadState(name) == VaultLoadState.Disabled);
+        var loadingVaults = totalVaults - completedVaults;
+        Status = $"{readyVaults} of {totalVaults} vault(s) ready for search";
+        if (loadingVaults > 0)
+        {
+            Status += $"; loading {loadingVaults}";
+        }
+
+        if (failedVaults > 0)
+        {
+            Status += $"; \u26a0 {failedVaults} failed";
+        }
+
+        if (disabledVaults > 0)
+        {
+            Status += $"; {disabledVaults} off";
+        }
+
+        Status += ".";
     }
 
     private void RebuildTree()
@@ -254,11 +341,21 @@ public sealed class BrowseViewModel : BaseViewModel
         Rows.Clear();
         foreach (var vault in tree)
         {
-            Rows.Add(new TreeRow(TreeRowKind.Vault, 0, vault.VaultName)
+            var state = _cache.GetVaultLoadState(vault.VaultName);
+            Rows.Add(new TreeRow(
+                TreeRowKind.Vault,
+                0,
+                vault.VaultName,
+                state != VaultLoadState.Disabled,
+                SetVaultMetadataEnabledAsync)
             {
-                Glyph = vault.IsExpanded ? "\u25be" : "\u25b8",
+                Glyph = state is VaultLoadState.Loading or VaultLoadState.Disabled
+                    ? string.Empty
+                    : vault.IsExpanded ? "\u25be" : "\u25b8",
                 VaultName = vault.VaultName,
                 Vault = vault,
+                IsVaultLoading = state == VaultLoadState.Loading,
+                HasVaultLoadFailed = state == VaultLoadState.Failed,
             });
 
             if (vault.IsExpanded)
@@ -326,6 +423,12 @@ public sealed class BrowseViewModel : BaseViewModel
 
         if (row.Kind == TreeRowKind.Vault && row.Vault != null)
         {
+            if (row.IsVaultLoading)
+            {
+                Status = $"Loading metadata for {row.VaultName}\u2026";
+                return;
+            }
+
             row.Vault.IsExpanded = !row.Vault.IsExpanded;
             RebuildFlatFromCache();
         }
@@ -341,28 +444,66 @@ public sealed class BrowseViewModel : BaseViewModel
         }
     }
 
+    private async Task SetVaultMetadataEnabledAsync(TreeRow row, bool enabled)
+    {
+        var connection = _session.CurrentConnection;
+        if (connection is null || row.Kind != TreeRowKind.Vault)
+        {
+            return;
+        }
+
+        try
+        {
+            _session.Config.SetVaultMetadataEnabled(connection.Id, row.VaultName, enabled);
+            await _configStore.SaveAsync(_session.Config);
+
+            if (!enabled)
+            {
+                _cache.DisableVault(row.VaultName);
+                Status = $"{row.VaultName} metadata loading is off.";
+                RebuildTree();
+                return;
+            }
+
+            Status = $"Loading metadata for {row.VaultName}\u2026";
+            RebuildTree();
+            var state = await _cache.EnableVaultAsync(row.VaultName);
+            Status = state == VaultLoadState.Loaded
+                ? $"{row.VaultName} is ready for search."
+                : $"Could not load metadata for {row.VaultName}. Tap Refresh to retry.";
+            RebuildTree();
+        }
+        catch (Exception ex)
+        {
+            Knox.AuthLog.Error($"Browse.ToggleVault '{row.VaultName}'", ex);
+            Status = $"Could not update {row.VaultName}: {ex.Message}";
+            RebuildTree();
+        }
+    }
+
     // Re-flatten using current expansion state (no rebuild), so toggling one node
     // preserves the expansion of untouched branches.
     private void RebuildFlatFromCache() => Flatten(_tree);
 
     private async Task NewSecretAsync()
     {
-        if (!_cache.IsLoaded || _cache.VaultNames.Count == 0)
+        var loadedVaultNames = _cache.LoadedVaultNames;
+        if (!_cache.IsLoaded || loadedVaultNames.Count == 0)
         {
-            Status = "Load a connection with at least one vault first.";
+            Status = "Wait for at least one vault to finish loading first.";
             return;
         }
 
         // If multiple vaults, ask which to create in; otherwise use the only one.
         string vaultName;
-        if (_cache.VaultNames.Count == 1)
+        if (loadedVaultNames.Count == 1)
         {
-            vaultName = _cache.VaultNames[0];
+            vaultName = loadedVaultNames[0];
         }
         else
         {
             var chosen = await Shell.Current.DisplayActionSheetAsync(
-                "Create secret in which vault?", "Cancel", null, _cache.VaultNames.ToArray());
+                "Create secret in which vault?", "Cancel", null, loadedVaultNames.ToArray());
             if (string.IsNullOrEmpty(chosen) || chosen == "Cancel")
             {
                 return;
