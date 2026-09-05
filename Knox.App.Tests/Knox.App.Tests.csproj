@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    BVT (build verification) tests for Knox.App.Logic. These are pure, off-box unit
+    tests: NO sign-in, NO network, NO device/emulator. Do not add functional tests
+    here.
+
+    Test framework is MSTest to honor the Knox Microsoft-only dependency policy
+    (xUnit/NUnit are third-party). The MSTest metapackage brings the adapter +
+    framework at coherent versions.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
+    <PackageReference Include="MSTest" Version="4.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Knox.App.Logic\Knox.App.Logic.csproj" />
+  </ItemGroup>
+
+</Project>

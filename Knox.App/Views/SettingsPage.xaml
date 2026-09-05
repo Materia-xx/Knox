@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="Knox.App.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:Knox.App.ViewModels"
+    x:DataType="vm:SettingsViewModel"
+    Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="14">
+            <Label Text="Auto-lock after (minutes, 0 = never)" />
+            <Entry Text="{Binding IdleMinutesLock}" Keyboard="Numeric" />
+
+            <Label Text="Clipboard auto-clear after (seconds, 0 = never)" />
+            <Entry Text="{Binding ClipboardClearSeconds}" Keyboard="Numeric" />
+
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Grid.Column="0" Text="Require biometric unlock" VerticalOptions="Center" />
+                <Switch Grid.Column="1" IsToggled="{Binding RequireBiometricUnlock}" />
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Grid.Column="0" Text="Suppress confirmation warnings" VerticalOptions="Center" />
+                <Switch Grid.Column="1" IsToggled="{Binding SuppressWarnings}" />
+            </Grid>
+
+            <Button Text="Save" Command="{Binding SaveCommand}" />
+            <Label Text="{Binding Status}" FontSize="12" TextColor="Gray" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

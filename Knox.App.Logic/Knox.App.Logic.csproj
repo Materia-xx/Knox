@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Pure, platform-agnostic logic for the Knox MAUI app (Knox.App).
+
+    Why a separate project (not folded into Knox.App or Knox.Core)?
+      - Knox.App is a MAUI app that only targets net10.0-android / net10.0-windows,
+        which makes it awkward to unit-test with a plain test project.
+      - Knox.Core is netstandard2.0 and is deliberately limited to logic SHARED by
+        BOTH the WPF app and the MAUI app. Multi-connection support is MAUI-only,
+        so it must NOT go into Knox.Core.
+      - Keeping this library MAUI-free (net10.0, no UseMaui) lets Knox.App.Tests
+        exercise it directly as BVT tests (no device, no off-box calls).
+
+    Dependency policy: Microsoft-authored packages only, and as few as possible.
+    This library intentionally has ZERO package references - it uses only the
+    built-in framework (System.Text.Json for serialization).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Knox.App.Logic</RootNamespace>
+    <AssemblyName>Knox.App.Logic</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Expose internal constants (e.g. storage keys) to the BVT test project. -->
+    <InternalsVisibleTo Include="Knox.App.Tests" />
+  </ItemGroup>
+
+</Project>

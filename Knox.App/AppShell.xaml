@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="Knox.App.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:views="clr-namespace:Knox.App.Views"
+    Title="Knox">
+
+    <FlyoutItem Title="Browse" Route="BrowsePage">
+        <ShellContent ContentTemplate="{DataTemplate views:BrowsePage}" Route="BrowsePage" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Connections" Route="ConnectionsPage">
+        <ShellContent ContentTemplate="{DataTemplate views:ConnectionsPage}" Route="ConnectionsPage" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Settings" Route="SettingsPage">
+        <ShellContent ContentTemplate="{DataTemplate views:SettingsPage}" Route="SettingsPage" />
+    </FlyoutItem>
+
+</Shell>

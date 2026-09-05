@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="Knox.App.Views.ConnectionEditPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:Knox.App.ViewModels"
+    x:DataType="vm:ConnectionEditViewModel"
+    Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="12">
+            <Label Text="Name" />
+            <Entry Text="{Binding Name}" Placeholder="e.g. Work" />
+
+            <Label Text="Client ID (Application ID)" />
+            <Entry Text="{Binding ClientId}" Placeholder="Entra app registration client id" Keyboard="Plain" />
+
+            <Label Text="Tenant ID (Directory ID)" />
+            <Entry Text="{Binding TenantId}" Placeholder="Entra directory/tenant id" Keyboard="Plain" />
+
+            <Border Padding="12" StrokeThickness="1" StrokeShape="RoundRectangle 8" Margin="0,8" IsVisible="{Binding HasAndroidPlatformInfo}">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Register these in your Entra app registration" FontAttributes="Bold" />
+                    <Label
+                        Text="Authentication → Add a platform → Android, then enter:"
+                        FontSize="11" TextColor="Gray" />
+
+                    <Label Text="Package name" FontSize="12" FontAttributes="Bold" Margin="0,6,0,0" />
+                    <Entry Text="{Binding PackageName}" IsReadOnly="True" FontSize="12" />
+
+                    <Label Text="Signature hash" FontSize="12" FontAttributes="Bold" Margin="0,6,0,0" />
+                    <Entry Text="{Binding SignatureHash}" IsReadOnly="True" FontSize="12" />
+
+                    <Label
+                        Text="{Binding RedirectUri, StringFormat='Together these form the redirect URI: {0}'}"
+                        FontSize="11" TextColor="Gray" LineBreakMode="CharacterWrap" Margin="0,6,0,0" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Padding="12" StrokeThickness="1" StrokeShape="RoundRectangle 8" Margin="0,8" IsVisible="{Binding HasAndroidPlatformInfo, Converter={StaticResource InverseBool}}">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Redirect URI to register in Entra" FontAttributes="Bold" />
+                    <Entry Text="{Binding RedirectUri}" IsReadOnly="True" FontSize="12" />
+                    <Label
+                        Text="Add this as a platform redirect URI in your own Entra app registration."
+                        FontSize="11" TextColor="Gray" />
+                </VerticalStackLayout>
+            </Border>
+
+            <HorizontalStackLayout Spacing="8" HorizontalOptions="End">
+                <Button Text="Cancel" Command="{Binding CancelCommand}" />
+                <Button Text="Save" Command="{Binding SaveCommand}" />
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
