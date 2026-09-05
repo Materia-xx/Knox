@@ -49,6 +49,18 @@ namespace Knox
             CancellationToken cancellationToken = default)
         {
             var credential = new MsalTokenCredential(clientId, tenantId, parentWindowProvider, redirectUri);
+            return await ListAccessibleVaultsAsync(credential, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Same as the clientId/tenantId overload, but reuses a caller-supplied
+        /// credential so the vault clients built afterwards share the same MSAL
+        /// token cache (avoids a second interactive prompt).
+        /// </summary>
+        public static async Task<List<string>> ListAccessibleVaultsAsync(
+            TokenCredential credential,
+            CancellationToken cancellationToken = default)
+        {
             AuthLog.Write("Discovery: acquiring ARM token...");
             var token = await credential
                 .GetTokenAsync(new TokenRequestContext(new[] { ArmScope }), cancellationToken)

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="Knox.App.Views.BrowsePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:Knox.App.ViewModels"
+    xmlns:models="clr-namespace:Knox.App.Logic.Models;assembly=Knox.App.Logic"
+    x:DataType="vm:BrowseViewModel"
+    Title="{Binding Title}">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="New" Command="{Binding NewSecretCommand}" />
+        <ToolbarItem Text="Refresh" Command="{Binding RefreshCommand}" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="12">
+
+        <!-- Header: prompt to pick, or the loaded connection + a way to switch. -->
+        <Label
+            Grid.Row="0"
+            Text="Choose a connection to browse"
+            FontAttributes="Bold"
+            FontSize="16"
+            IsVisible="{Binding HasLoaded, Converter={StaticResource InverseBool}}" />
+
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" IsVisible="{Binding HasLoaded}">
+            <Label Grid.Column="0" Text="{Binding ConnectionName}" FontAttributes="Bold" FontSize="16" VerticalOptions="Center" />
+            <Button Grid.Column="1" Text="Change" Command="{Binding ChangeConnectionCommand}" />
+        </Grid>
+
+        <VerticalStackLayout Grid.Row="1" IsVisible="{Binding HasLoaded}" Spacing="0">
+            <SearchBar
+                Placeholder="Search by title"
+                Text="{Binding SearchText}" />
+            <HorizontalStackLayout Spacing="6" Padding="12,0,0,0">
+                <CheckBox IsChecked="{Binding SearchTags}" VerticalOptions="Center" />
+                <Label Text="Also search tags" VerticalOptions="Center" FontSize="13" />
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+
+        <VerticalStackLayout Grid.Row="2" Spacing="4" Margin="0,4">
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Label Text="{Binding Status}" FontSize="12" TextColor="Gray" />
+        </VerticalStackLayout>
+
+        <!-- Connection list (shown until a connection is loaded). Tap to browse. -->
+        <CollectionView
+            Grid.Row="3"
+            ItemsSource="{Binding Connections}"
+            SelectionMode="None"
+            IsVisible="{Binding HasLoaded, Converter={StaticResource InverseBool}}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:KnoxConnection">
+                    <Border Margin="0,4" Padding="14" StrokeThickness="1" StrokeShape="RoundRectangle 8">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer
+                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:BrowseViewModel}}, Path=BrowseConnectionCommand}"
+                                CommandParameter="{Binding .}" />
+                        </Border.GestureRecognizers>
+                        <VerticalStackLayout>
+                            <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="16" />
+                            <Label Text="{Binding TenantId}" FontSize="12" TextColor="Gray" />
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Secret tree (shown once a connection is loaded). -->
+        <CollectionView
+            Grid.Row="3"
+            ItemsSource="{Binding Rows}"
+            SelectionMode="None"
+            IsVisible="{Binding HasLoaded}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:TreeRow">
+                    <Grid Padding="{Binding Indent}">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer
+                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:BrowseViewModel}}, Path=RowTappedCommand}"
+                                CommandParameter="{Binding .}" />
+                        </Grid.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="6" Padding="4,10">
+                            <Label Text="{Binding Glyph}" FontSize="14" WidthRequest="16" />
+                            <Label Text="{Binding Text}" FontSize="15" />
+                        </HorizontalStackLayout>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

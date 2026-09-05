@@ -3,19 +3,29 @@
     Launches the Knox_Pixel Android emulator using the host's inherited DNS.
 
 .DESCRIPTION
-    Preferred way to run the emulator. Run this with NordVPN OFF: by not
-    overriding the DNS, the emulator inherits the host resolver, which gives
-    reliable DNS resolution and is how sign-in is expected to work.
-
-    (The alternative, run-emulator-google-dns.ps1, forces 8.8.8.8 but is
-    intermittently flaky and is not preferred.)
+    The supported emulator launcher. Run with NordVPN OFF so the emulator
+    inherits working host DNS. With NordVPN enabled, authentication hosts such
+    as login.microsoftonline.com may not resolve.
 
     Cold-boot only: fully stop any running emulator first, then run this. The
     emulator captures network state at launch, so toggling the VPN after boot
     has no effect on the running guest.
 
-    Use -WipeData to factory-wipe the AVD's user data on this boot (clears all
-    remembered state, including sign-in cookies and the MSAL token cache).
+    Use -WipeData to factory-wipe the AVD on this boot. This clears application
+    data, browser state, and the MSAL token cache.
+
+    DEBUGGING LIMITATION:
+    Visual Studio debugging can terminate a .NET MAUI Android app shortly after
+    it loses focus. For example, Knox can be force-stopped a few seconds after
+    MSAL opens Chrome Custom Tabs for authentication. This is tracked by:
+
+      dotnet/maui#20980
+      https://github.com/dotnet/maui/issues/20980
+
+    To build, deploy, and test the newest app without attaching the debugger,
+    use Visual Studio's Start Without Debugging (Ctrl+F5). Alternatively, deploy
+    with Visual Studio, stop debugging, and relaunch Knox from the emulator's
+    app launcher before testing authentication.
 #>
 [CmdletBinding()]
 param(

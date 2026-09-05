@@ -3,102 +3,91 @@
     Shared implementation that launches the Knox_Pixel Android emulator.
 
 .DESCRIPTION
-    This is NOT a top-level entry point. It lives in the inc\ subfolder to keep
-    it separate from the scripts meant to be run directly. It defines the
-    Start-KnoxEmulator function and is dot-sourced by the two entry scripts in
-    the parent tools\ folder:
+    This is not a top-level entry point. It defines Start-KnoxEmulator and is
+    dot-sourced by run-emulator-inherited-dns.ps1.
 
-        run-emulator-google-dns.ps1     -> forces public Google DNS (8.8.8.8)
-        run-emulator-inherited-dns.ps1  -> inherits the host's DNS
+    Visual Studio cannot pass the required networking choices when it starts an
+    Android emulator, so launch the emulator with the entry script first and
+    then select the already-running device in Visual Studio.
 
-    Visual Studio cannot pass custom flags (such as -dns-server) to the Android
-    emulator when it deploys a MAUI app, so boot the emulator with one of the
-    entry scripts first, then deploy/debug from Visual Studio (F5) onto the
-    already-running emulator.
-
-    Why two DNS modes:
-      - Inherited DNS (preferred): run with NordVPN off so the emulator inherits
-        the host resolver. This gives reliable DNS and is how sign-in is expected
-        to work.
-      - Google DNS (fallback): forces 8.8.8.8. Only partially works -- DNS
-        resolution is intermittently flaky (queries time out in bursts), which
-        can make sign-in hang. Not preferred.
-
-    IMPORTANT: The emulator captures its network/DNS configuration at launch.
-    Toggling the VPN on/off after the emulator is already running has NO effect
-    on the running guest. Always fully stop the emulator and cold-boot it with
-    the appropriate entry script after changing your VPN state.
+    NordVPN must be off before starting the emulator. With NordVPN enabled, the
+    inherited resolver can prevent authentication hosts such as
+    login.microsoftonline.com from resolving. The emulator captures its DNS
+    configuration at launch, so changing VPN state afterward does not repair the
+    running guest; fully stop it and cold-boot again.
 #>
 
 function Start-KnoxEmulator {
     [CmdletBinding()]
     param(
-        # Name of the AVD to launch.
         [string]$Avd = "Knox_Pixel",
 
-        # DNS server(s) to pass via -dns-server. Pass $null or empty to inherit
-        # the host's DNS (no -dns-server flag).
-        [string]$Dns,
-
-        # When set, factory-wipe the AVD's user data on this cold boot
-        # (-wipe-data). This resets all remembered state, including sign-in
-        # cookies and the MSAL token cache. A wipe only takes effect at boot.
+        # Factory-wipe user data on this cold boot. This clears browser state,
+        # application data, and the MSAL token cache.
         [switch]$WipeData
     )
 
     $ErrorActionPreference = "Stop"
+
+    Write-Host ""
+    Write-Host "IMPORTANT: NordVPN must be OFF before launching this emulator." -ForegroundColor Yellow
+    Write-Host "When NordVPN is enabled, authentication sites such as login.microsoftonline.com may not resolve." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "DEBUGGING NOTE: Visual Studio can force-stop the app after it loses focus," -ForegroundColor Yellow
+    Write-Host "for example when MSAL opens Chrome for authentication." -ForegroundColor Yellow
+    Write-Host "Use Start Without Debugging (Ctrl+F5) to build, deploy, and test the newest app." -ForegroundColor Yellow
+    Write-Host "Tracked by dotnet/maui#20980: https://github.com/dotnet/maui/issues/20980" -ForegroundColor DarkGray
+    Write-Host ""
 
     $sdk = "C:\Program Files (x86)\Android\android-sdk"
     $emulator = Join-Path $sdk "emulator\emulator.exe"
     $adb = Join-Path $sdk "platform-tools\adb.exe"
     $jdk = "C:\Program Files\Android\openjdk\jdk-21.0.8"
 
-    if (Test-Path $jdk) { $env:JAVA_HOME = $jdk }
-
-    if (-not (Test-Path $emulator)) {
-        throw "Emulator not found at '$emulator'. Install it via Android SDK Manager."
+    if (Test-Path $jdk) {
+        $env:JAVA_HOME = $jdk
     }
 
-    # If an emulator is already running, don't start a second one.
+    if (-not (Test-Path $emulator)) {
+        throw "Emulator not found at '$emulator'. Install it through Android SDK Manager."
+    }
+    if (-not (Test-Path $adb)) {
+        throw "adb not found at '$adb'. Install Android platform-tools."
+    }
+
+    # Do not start a second emulator. DNS and wipe choices only apply at boot.
     $running = & $adb devices | Select-String "emulator-\d+\s+device"
     if ($running) {
         Write-Host "An emulator is already running:" -ForegroundColor Yellow
         & $adb devices
-        Write-Host "Skipping launch. (Stop it first if you want a clean DNS boot or a -WipeData wipe.)"
+        Write-Host "Stop it first to change DNS mode or wipe its data."
         return
     }
 
-    # Build the emulator argument list. -no-snapshot-load forces a cold boot so
-    # the chosen DNS mode actually takes effect (snapshots restore old network
-    # state). Only add -dns-server when a DNS value was supplied.
-    $args = @('-avd', $Avd, '-no-snapshot-load')
+    # Cold boot so the host's current VPN-off DNS configuration is inherited.
+    $emulatorArgs = @("-avd", $Avd, "-no-snapshot-load")
     if ($WipeData) {
-        $args += '-wipe-data'
-        Write-Host "Factory-wiping AVD user data on this boot (-wipe-data)..." -ForegroundColor Magenta
+        $emulatorArgs += "-wipe-data"
+        Write-Host "Factory-wiping AVD user data on this boot..." -ForegroundColor Magenta
     }
-    if (-not [string]::IsNullOrWhiteSpace($Dns)) {
-        $args += @('-dns-server', $Dns)
-        Write-Host "Launching AVD '$Avd' with DNS override '$Dns'..." -ForegroundColor Cyan
-    }
-    else {
-        Write-Host "Launching AVD '$Avd' with inherited (host) DNS..." -ForegroundColor Cyan
-    }
+    Write-Host "Launching AVD '$Avd' with inherited host DNS..." -ForegroundColor Cyan
 
-    Start-Process -FilePath $emulator -ArgumentList $args
+    Start-Process -FilePath $emulator -ArgumentList $emulatorArgs
 
-    Write-Host "Waiting for device to connect..."
+    Write-Host "Waiting for the emulator to connect..."
     & $adb wait-for-device
 
     Write-Host "Waiting for full boot..."
-    for ($i = 0; $i -lt 90; $i++) {
-        $booted = (& $adb shell getprop sys.boot_completed 2>$null)
+    for ($attempt = 0; $attempt -lt 90; $attempt++) {
+        $booted = & $adb shell getprop sys.boot_completed 2>$null
         if ("$booted".Trim() -eq "1") {
-            Write-Host "Emulator '$Avd' is booted and ready." -ForegroundColor Green
+            Write-Host "Emulator '$Avd' is ready." -ForegroundColor Green
             & $adb devices
             return
         }
+
         Start-Sleep -Seconds 5
     }
 
-    Write-Warning "Emulator did not report boot_completed in time; check the emulator window."
+    Write-Warning "The emulator did not report boot completion in time."
 }

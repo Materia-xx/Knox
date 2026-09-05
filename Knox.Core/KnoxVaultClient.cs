@@ -2,6 +2,7 @@
 using Azure.Security.KeyVault.Secrets;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Knox
 {
@@ -15,14 +16,69 @@ namespace Knox
 
         public KnoxVaultClient(Uri uri, TokenCredential credGetter)
         {
-            client = new SecretClient(uri, credGetter);
-            AllSecretProperties.Clear();
-            var allProperties = client.GetPropertiesOfSecrets();
-            foreach (var secretProperties in allProperties)
+            // Key Vault throttles list operations (HTTP 429) and enumerating a vault
+            // with many secrets makes several paged calls. The default SDK retry
+            // policy (a few short retries) can be exhausted under sustained
+            // throttling, which surfaced as "some secrets are missing" -- the
+            // enumeration threw part-way and only partial data was kept. Give the
+            // SDK a more patient, exponential retry budget for those transient 429s.
+            var options = new SecretClientOptions
             {
-                AllSecretProperties[secretProperties.Name] = secretProperties;
-            }
+                Retry =
+                {
+                    MaxRetries = 5,
+                    Mode = RetryMode.Exponential,
+                    Delay = TimeSpan.FromSeconds(1),
+                    MaxDelay = TimeSpan.FromSeconds(16),
+                },
+            };
+
+            client = new SecretClient(uri, credGetter, options);
+            LoadAllSecretProperties();
         }
+
+        /// <summary>
+        /// (Re)loads every secret's properties for the vault. Builds into a temporary
+        /// map and only publishes it after the FULL enumeration succeeds, so a failure
+        /// part-way through can never leave a partially-populated cache (the bug where
+        /// secrets past a certain point were silently missing). If the enumeration
+        /// throws (e.g. throttling that outlasts the per-request retries), the whole
+        /// enumeration is retried from scratch a few times before giving up.
+        /// </summary>
+        public void LoadAllSecretProperties()
+        {
+            const int maxAttempts = 3;
+            Exception lastError = null;
+
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    var loaded = new Dictionary<string, SecretProperties>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var secretProperties in client.GetPropertiesOfSecrets())
+                    {
+                        loaded[secretProperties.Name] = secretProperties;
+                    }
+
+                    // Full enumeration succeeded -- publish atomically.
+                    AllSecretProperties = loaded;
+                    return;
+                }
+                catch (Exception ex) when (attempt < maxAttempts)
+                {
+                    // Transient (throttling / network). Back off, then re-enumerate
+                    // from the start; partial results are discarded, not exposed.
+                    lastError = ex;
+                    Thread.Sleep(TimeSpan.FromSeconds(attempt * 2));
+                }
+            }
+
+            // Ran out of attempts; propagate so the caller can report/skip this vault
+            // rather than silently browsing an incomplete secret list.
+            throw new KnoxVaultLoadException(
+                $"Failed to list all secrets for '{client.VaultUri}' after {maxAttempts} attempts.", lastError);
+        }
+
 
         public KeyVaultSecret GetSecret(string secretName)
         {

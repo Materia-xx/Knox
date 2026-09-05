@@ -50,6 +50,43 @@ namespace Knox.App
             return DebugFallback;
         }
 
+        /// <summary>The app package name the user registers in the Entra Android platform.</summary>
+        public static string GetPackageName()
+        {
+            try
+            {
+                return Android.App.Application.Context.PackageName ?? "com.materia.knox";
+            }
+            catch (Exception ex)
+            {
+                AuthLog.Error("MsalAndroidRedirect.GetPackageName", ex);
+                return "com.materia.knox";
+            }
+        }
+
+        /// <summary>The Base64 SHA-1 signing-cert hash the user registers in Entra.</summary>
+        public static string GetSignatureHashValue()
+        {
+            try
+            {
+                var ctx = Android.App.Application.Context;
+                var pkg = ctx.PackageName ?? "com.materia.knox";
+                var hash = GetSignatureHash(ctx, pkg);
+                if (!string.IsNullOrEmpty(hash))
+                {
+                    return hash!;
+                }
+            }
+            catch (Exception ex)
+            {
+                AuthLog.Error("MsalAndroidRedirect.GetSignatureHashValue", ex);
+            }
+
+            // Fall back to the debug hash embedded in DebugFallback.
+            var slash = DebugFallback.LastIndexOf('/');
+            return slash >= 0 ? DebugFallback[(slash + 1)..] : string.Empty;
+        }
+
         private static string? GetSignatureHash(Context ctx, string pkg)
         {
             var pm = ctx.PackageManager;

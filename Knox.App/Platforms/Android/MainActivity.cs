@@ -19,5 +19,10 @@ public class MainActivity : MauiAppCompatActivity
 		// activity; MAUI doesn't wire this up automatically. Without it, sign-in
 		// hangs on "Signing in..." even though the browser redirect returned.
 		AuthenticationContinuationHelper.SetAuthenticationContinuationEventArgs(requestCode, resultCode, data);
+
+		// Forward the app-unlock (confirm-device-credential) result to complete the
+		// awaiting BiometricService.AuthenticateAsync task. Same reason as MSAL:
+		// StartActivityForResult results aren't surfaced to MAUI automatically.
+		AndroidDeviceCredential.HandleResult(requestCode, resultCode);
 	}
 }

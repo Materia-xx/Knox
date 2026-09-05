@@ -13,6 +13,12 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
+		<!-- Build flavors. "DebugEmulator" is a debug build that additionally
+		     defines EMULATOR_BYPASS_LOCK so the biometric app-lock is skipped
+		     (handy on an emulator with no screen lock). Debug and Release always
+		     enforce the lock. -->
+		<Configurations>Debug;Release;DebugEmulator</Configurations>
+
 		<!-- Enable XAML source generation for faster build times and improved performance.
 		     This generates C# code from XAML at compile time instead of runtime inflation.
 		     To disable, remove this line.
@@ -39,9 +45,24 @@
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 	</PropertyGroup>
 
+	<!-- DebugEmulator = a Debug build with the app-lock bypassed. We mirror the
+	     debug-like compiler/packaging settings the .NET/Android SDK would apply for
+	     "Debug" (which it keys off the exact configuration name) and add the
+	     EMULATOR_BYPASS_LOCK symbol that LockController checks. -->
+	<PropertyGroup Condition="'$(Configuration)' == 'DebugEmulator'">
+		<DebugSymbols>true</DebugSymbols>
+		<DebugType>portable</DebugType>
+		<Optimize>false</Optimize>
+		<DefineConstants>$(DefineConstants);DEBUG;TRACE;EMULATOR_BYPASS_LOCK</DefineConstants>
+		<!-- Keep Android packaging debug-like: no trimming, fast deployment. -->
+		<AndroidLinkMode>None</AndroidLinkMode>
+		<EmbedAssembliesIntoApk Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">false</EmbedAssembliesIntoApk>
+		<PublishTrimmed>false</PublishTrimmed>
+	</PropertyGroup>
+
 	<ItemGroup>
 		<!-- App Icon -->
-		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#073B3A" />
 
 		<!-- Splash Screen -->
 		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
@@ -65,6 +86,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Knox.Core\Knox.Core.csproj" />
+		<ProjectReference Include="..\Knox.App.Logic\Knox.App.Logic.csproj" />
 	</ItemGroup>
 
 </Project>

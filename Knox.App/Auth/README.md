@@ -76,6 +76,32 @@ If interactive sign-in hangs on "Signing in…", one of these is missing/wrong.
 - Auth trace tag is `KNOXAUTH` (see `AuthLog.cs`). Success path logs
   `Interactive: success` then `GetToken: token acquired`.
 
+## App-lock (biometric / device credential)
+
+Knox gates entry behind the device lock (bank-app style), controlled by
+`RequireBiometricUnlock` in settings. Implementation lives in
+`Services/BiometricService.cs`:
+
+- **Windows:** `Windows.Security.Credentials.UI.UserConsentVerifier` (Microsoft,
+  in-SDK). Unpackaged desktop can throw → caught, treated as *Unavailable*.
+- **Android:** in-SDK `KeyguardManager.CreateConfirmDeviceCredentialIntent`
+  (`Platforms/Android/AndroidDeviceCredential.cs`). We **deliberately do NOT use
+  AndroidX `BiometricPrompt`** — `androidx.biometric` is a Google/Jetpack package,
+  not Microsoft-authored, which violates the Knox Microsoft-only dependency
+  policy. The system credential screen still offers **fingerprint when enrolled**,
+  falling back to PIN/pattern/password, so the UX is close to a dedicated
+  biometric prompt without the extra dependency.
+  - Like MSAL, the confirm intent is launched via `StartActivityForResult`, so
+    `MainActivity.OnActivityResult` must forward the result to
+    `AndroidDeviceCredential.HandleResult(...)` — otherwise the awaiting unlock
+    task never completes. This forward sits right next to the MSAL one.
+  - If the device has **no secure lock screen**, `BiometricService` returns
+    *Unavailable* and the lock gate fails open (you can't require a credential the
+    device doesn't have).
+
+Lock orchestration (show on launch/resume, relock on background, idle timeout)
+lives in `Services/LockController.cs` + `App.xaml.cs`.
+
 ## Token flow (not a place that needs extra code)
 
 We use the public-client **authorization code flow + PKCE** (same as a SPA).
